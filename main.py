@@ -15,7 +15,7 @@ class User:
 user = User(None, None)
 
 list_markup = telebot.types.InlineKeyboardMarkup()
-list_btn = telebot.types.InlineKeyboardButton('Список пользователей')
+list_btn = telebot.types.InlineKeyboardButton('Список пользователей', callback_data='list')
 list_markup.add(list_btn)
 
 markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -56,22 +56,6 @@ def text_handler(message):
             user.authorized = False
             bot.send_message(message.chat.id, 'Введите логин', reply_markup=cancel_markup)
             bot.register_next_step_handler(message, check_login)
-
-        elif message.text == 'Список пользователей' and user.authorized:
-            conn = sqlite3.connect(config.sqlfile)
-            cur = conn.cursor()
-            query = "SELECT * FROM users"
-            cur.execute(query)
-            users = cur.fetchall()
-            query = "SELECT COUNT(*) FROM users"
-            cur.execute(query)
-            count = cur.fetchall()
-            user_list = f'Список пользователей (всего: {count[0][0]}):\n'
-            for item in users:
-                user_list += f"Имя: '{item[1]}'\nХэш пароля: '{item[2]}'\n\n"
-            cur.close()
-            conn.close()
-            bot.send_message(message.chat.id, user_list)
 
         elif user.authorized:
             bot.send_message(message.chat.id, random.choice(answer_arr))
@@ -157,7 +141,6 @@ def check_pass(pass_msg, login, attempts_count: int):
     conn.close()
 
 def create_pass_and_insert(pass_msg, user: User):
-    global list_markup
     user.hashpass = find_hash(pass_msg.text, user.login)
     insert_in_table(user)
 
@@ -170,5 +153,20 @@ def callback_message(call):
             bot.edit_message_text('Отмена', call.message.chat.id, call.message.message_id)
             bot.clear_step_handler_by_chat_id(chat_id=call.message.chat.id)
             bot.send_message(call.message.chat.id, 'Лучше бы Вы прошли авторизацию', reply_markup=markup)
+        elif call.data == 'list':
+            conn = sqlite3.connect(config.sqlfile)
+            cur = conn.cursor()
+            query = "SELECT * FROM users"
+            cur.execute(query)
+            users = cur.fetchall()
+            query = "SELECT COUNT(*) FROM users"
+            cur.execute(query)
+            count = cur.fetchall()
+            user_list = f'Список пользователей (всего: {count[0][0]}):\n'
+            for item in users:
+                user_list += f"Имя: '{item[1]}'\nХэш пароля: '{item[2]}'\n\n"
+            cur.close()
+            conn.close()
+            bot.send_message(call.message.chat.id, user_list)
 
 bot.polling(none_stop=True)
