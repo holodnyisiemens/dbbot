@@ -164,7 +164,7 @@ def callback_message(call):
             count = cur.fetchall()
             user_list = f'Список пользователей (всего: {count[0][0]}):\n'
             for item in users:
-                user_list += f"Имя: '{item[1]}'\nХэш пароля: '{item[2]}'\n\n"
+                user_list += f"Имя: '{item[1]}'\n"
             cur.close()
             conn.close()
             bot.send_message(call.message.chat.id, user_list)
