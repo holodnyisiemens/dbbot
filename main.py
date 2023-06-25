@@ -53,7 +53,6 @@ def text_handler(message):
             bot.register_next_step_handler(message, create_account)
 
         elif message.text == 'Аутентификация':
-            user.authorized = False
             bot.send_message(message.chat.id, 'Введите логин', reply_markup=cancel_markup)
             bot.register_next_step_handler(message, check_login)
 
@@ -98,6 +97,12 @@ def create_account(login_msg):
         bot.send_message(pass_msg.chat.id, 'Придумайте пароль', reply_markup=cancel_markup)
         bot.register_next_step_handler(pass_msg, create_pass_and_insert, user)
 
+def create_pass_and_insert(pass_msg, user: User):
+    user.hashpass = find_hash(pass_msg.text, user.login)
+    insert_in_table(user)
+    bot.send_message(pass_msg.chat.id, 'Поздравляю! Теперь Вы можете со мной пообщаться', reply_markup=list_markup)
+    user.authorized = True
+
 def find_hash(password, local_salt) -> str:
     hash = password
     hash += config.global_salt
@@ -140,19 +145,12 @@ def check_pass(pass_msg, login, attempts_count: int):
     cur.close()
     conn.close()
 
-def create_pass_and_insert(pass_msg, user: User):
-    user.hashpass = find_hash(pass_msg.text, user.login)
-    insert_in_table(user)
-
-    bot.send_message(pass_msg.chat.id, 'Поздравляю! Теперь Вы можете со мной пообщаться', reply_markup=list_markup)
-
 @bot.callback_query_handler(func=lambda call: True)
 def callback_message(call):
     if call.message:
         if call.data == 'cancel':
-            bot.edit_message_text('Отмена', call.message.chat.id, call.message.message_id)
+            bot.edit_message_text('Лучше бы Вы прошли авторизацию', call.message.chat.id, call.message.message_id)
             bot.clear_step_handler_by_chat_id(chat_id=call.message.chat.id)
-            bot.send_message(call.message.chat.id, 'Лучше бы Вы прошли авторизацию', reply_markup=markup)
         elif call.data == 'list':
             conn = sqlite3.connect(config.sqlfile)
             cur = conn.cursor()
