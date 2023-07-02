@@ -1,18 +1,13 @@
 import sqlite3
 import telebot
-import config
 import hashlib
 import random
+import models
+import config
 
-bot = telebot.TeleBot(config.TOKEN)
+bot = telebot.TeleBot(config.TELEGRAM_BOT_TOKEN)
 
-class User:
-    def __init__(self, login, hashpass):
-        self.login = login
-        self.hashpass = hashpass
-        self.authorized = False
-
-user = User(None, None)
+user = models.User(None, None)
 
 list_markup = telebot.types.InlineKeyboardMarkup()
 list_btn = telebot.types.InlineKeyboardButton('Список пользователей', callback_data='list')
@@ -31,11 +26,11 @@ cancel_markup.add(cancel_btn)
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    conn = sqlite3.connect(config.sqlfile)  # подключение к создаваемой базе данных
+    conn = sqlite3.connect(config.SQL_FILEPATH)  # подключение к создаваемой базе данных
     cur = conn.cursor()                     # курсор для работы с таблицами
     # команда для создания таблицы users, если такой не существует
     # поле id будет автоматически инкрементироваться, являясь первичным ключом (primery key)
-    query = f'CREATE TABLE IF NOT EXISTS users (id int primery key, login varchar({config.loginlen}), passhash varchar({config.passlen}))'
+    query = f'CREATE TABLE IF NOT EXISTS users (id int primery key, login varchar({config.LOGIN_LEN}), passhash varchar({config.PASS_LEN}))'
     cur.execute(query)
     conn.commit()
     cur.close()
@@ -64,8 +59,8 @@ def text_handler(message):
     else:
         bot.send_message(message.chat.id, 'Невозможно выполнить данную команду в неприватном чате', reply_markup=markup)
 
-def insert_in_table(user: User):
-    conn = sqlite3.connect(config.sqlfile)
+def insert_in_table(user: models.User):
+    conn = sqlite3.connect(config.SQL_FILEPATH)
     cur = conn.cursor()
     # передавать id не нужно: он инкрементируется автоматически
     # для передачи других параметров можно использовать % и кортеж параметров
@@ -76,7 +71,7 @@ def insert_in_table(user: User):
     conn.close()
 
 def user_exists(username: str) -> bool:
-    conn = sqlite3.connect(config.sqlfile)
+    conn = sqlite3.connect(config.SQL_FILEPATH)
     cur = conn.cursor()
     query = "SELECT login FROM users"
     cur.execute(query)
@@ -97,7 +92,7 @@ def create_account(login_msg):
         bot.send_message(pass_msg.chat.id, 'Придумайте пароль', reply_markup=cancel_markup)
         bot.register_next_step_handler(pass_msg, create_pass_and_insert, user)
 
-def create_pass_and_insert(pass_msg, user: User):
+def create_pass_and_insert(pass_msg, user: models.User):
     user.hashpass = find_hash(pass_msg.text, user.login)
     insert_in_table(user)
     bot.send_message(pass_msg.chat.id, 'Поздравляю! Теперь Вы можете со мной пообщаться', reply_markup=list_markup)
@@ -105,7 +100,7 @@ def create_pass_and_insert(pass_msg, user: User):
 
 def find_hash(password, local_salt) -> str:
     hash = password
-    hash += config.global_salt
+    hash += config.GLOBAL_SALT
     hash += local_salt
     for _ in range(10):
         hash = hashlib.md5(hash.encode()).hexdigest()
@@ -124,7 +119,7 @@ def check_login(login_msg):
 
 def check_pass(pass_msg, login, attempts_count: int):
     global list_markup
-    conn = sqlite3.connect(config.sqlfile)
+    conn = sqlite3.connect(config.SQL_FILEPATH)
     cur = conn.cursor()
     query = f"SELECT passhash FROM users WHERE login = '{login}'"
     cur.execute(query)
@@ -152,7 +147,7 @@ def callback_message(call):
             bot.edit_message_text('Лучше бы Вы прошли авторизацию', call.message.chat.id, call.message.message_id)
             bot.clear_step_handler_by_chat_id(chat_id=call.message.chat.id)
         elif call.data == 'list':
-            conn = sqlite3.connect(config.sqlfile)
+            conn = sqlite3.connect(config.SQL_FILEPATH)
             cur = conn.cursor()
             query = "SELECT * FROM users"
             cur.execute(query)

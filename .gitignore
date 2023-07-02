@@ -1,3 +1,6 @@
 __pycache__
-config.py
+
 *.sql
+
+env/
+.env
