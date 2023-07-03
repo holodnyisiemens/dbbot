@@ -3,33 +3,17 @@ import config
 import sqlite3
 import hashlib
 import random
-from db import session
+from db import Session, engine, Base
 import tables
-
-# result = session.query(tables.Users_db.login, tables.Users_db.passhash).all()
-# print(result)
-
-# import sqlalchemy as db
-# conn = engine.connect()
-# metadata = db.MetaData() # будет хранить информацию о таблицах
-# metadata.create_all(engine)
-# def insert_in_table(login: str, password: str):
-#     insertion_query = users_db.insert().values([
-#         {'login':login, 'passhash': password}
-#     ])
-#     conn.execute(insertion_query)
-# insert_in_table('log', 'pas')
-# select_all_query = db.select(users_db)
-# select_all_result = conn.execute(select_all_query)
-# print(select_all_result.fetchall())
-# conn.close()
+from sqlalchemy import func, insert
+from sqlalchemy_utils import database_exists
 
 class User:
-    '''Класс для работы с пользователем'''
-    def __init__(self, login: str, hashpass: str):
+    '''Класс для работы с текущим пользователем'''
+    def __init__(self, login: str, passhash: str):
         self.login = login
-        self.hashpass = hashpass
-        self.authorized = False
+        self.passhash = passhash
+        self.authorized = False     # состояние, в котором находится текущий пользователь (True - авторизован, False - нет)
 
 class BotClient:
     '''Класс для работы с ботом'''
@@ -37,8 +21,8 @@ class BotClient:
     reg_btn_txt = 'Регистрация'     # текст, который отправляет боту кнопка регистрации
     auth_bnt_txt = 'Аутентификация' # текст, который отправляет боту кнопка аутентификации
     kb_markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb_reg_bnt = telebot.types.KeyboardButton(reg_btn_txt)
-    kb_auth_bnt = telebot.types.KeyboardButton(auth_bnt_txt)
+    kb_reg_bnt = telebot.types.KeyboardButton(reg_btn_txt)      # кнопка, отправляющая сообщение для регистрации
+    kb_auth_bnt = telebot.types.KeyboardButton(auth_bnt_txt)    # кнопка, отправляющая сообщение для аутентификации
     kb_markup.row(kb_reg_bnt)
     kb_markup.row(kb_auth_bnt)
 
@@ -56,55 +40,48 @@ class BotClient:
         self.user = User(None, None)
 
     def register_handlers(self):
-        def insert_in_table(user):
-            conn = sqlite3.connect(config.SQL_FILEPATH)
-            cur = conn.cursor()
-            # передавать id не нужно: он инкрементируется автоматически
-            # для передачи других параметров можно использовать % и кортеж параметров
-            query = "INSERT INTO users (login, passhash) VALUES ('%s', '%s')" % (user.login, user.hashpass)
-            cur.execute(query)
-            conn.commit()
-            cur.close()
-            conn.close()
+        '''Функция обработки всех сообщений пользователя'''
+        def insert_in_table(user):  # добавление данных пользователя в таблицу
+            with Session() as sess:
+                sess.add(tables.Users(self.user.login, self.user.passhash)) # добавление данных пользователя в виде экземпляра класса User в базу данных
+                sess.commit()
 
-        def user_exists(username: str) -> bool:
-            # result = session.query(tables.Users_db.login, tables.Users_db.passhash).filter(tables.Users_db.login == username).one_or_none()
-            conn = sqlite3.connect(config.SQL_FILEPATH)
-            cur = conn.cursor()
-            query = "SELECT login FROM users"
-            cur.execute(query)
-            users = cur.fetchall()
-            cur.close()
-            conn.close()
-            login_tup = (username, )
-            return login_tup in users
+        def user_exists(login: str) -> bool:
+            '''Функция для проверки существования пользователя в базе данных пользователей'''
+            with Session() as sess:
+                # если пользователь существует вернется кортеж состоящий из имени пользователя, иначе None
+                result = sess.query(tables.Users.login).filter(tables.Users.login == login).one_or_none()
+            return bool(result) # если в результат будет None, то вернется False, иначе True
 
         def create_account(login_msg):
-            if user_exists(login_msg.text):
+            '''Функция для создания аккаунта'''
+            if user_exists(login_msg.text): # логины в базе данных не должны совпадать
                 self.bot.reply_to(login_msg, 'Данный логин занят. Придумайте другой логин', reply_markup=self.cancel_markup)
-                self.bot.register_next_step_handler(login_msg, create_account)
-
+                self.bot.register_next_step_handler(login_msg, create_account)  # рекурсивный вызов обработчика сообщения с логином
             else:
                 self.user.login = login_msg.text
                 pass_msg = login_msg
                 self.bot.send_message(pass_msg.chat.id, 'Придумайте пароль', reply_markup=self.cancel_markup)
-                self.bot.register_next_step_handler(pass_msg, create_pass_and_insert, self.user)
+                self.bot.register_next_step_handler(pass_msg, create_pass_and_insert)
 
-        def create_pass_and_insert(pass_msg, user):
-            user.hashpass = find_hash(pass_msg.text, user.login)
-            insert_in_table(user)
+        def create_pass_and_insert(pass_msg):
+            '''Функция для создания пароля и добавления логина и пароля нового пользователя в базу данных'''
+            self.user.passhash = find_hash(pass_msg.text)
+            insert_in_table(self.user)  # помещение данных в таблицу
             self.bot.send_message(pass_msg.chat.id, 'Поздравляю! Теперь Вы можете со мной пообщаться', reply_markup=self.list_markup)
-            user.authorized = True
+            self.user.authorized = True
 
-        def find_hash(password: str, local_salt: str) -> str:
+        def find_hash(password: str, local_salt: str = '') -> str:
+            '''Функция, вычисляющая хэш-сумму пароля HASHES_NUMBER раз с применением солей'''
             hash = password
-            hash += config.GLOBAL_SALT
-            hash += local_salt
+            hash += config.GLOBAL_SALT  # глобальная соль для хэширования (по умолчанию выключена)
+            hash += local_salt          # локальная соль для хэширования (по умолчанию выключена)
             for _ in range(config.HASHES_NUMBER):
                 hash = hashlib.md5(hash.encode()).hexdigest()
             return hash
 
         def check_login(login_msg):
+            '''Функция проверки логина на существование в базе данных'''
             if user_exists(login_msg.text):
                 login = login_msg.text
                 pass_msg = login_msg
@@ -116,17 +93,16 @@ class BotClient:
                 self.bot.register_next_step_handler(login_msg, check_login)
 
         def check_pass(pass_msg, login, attempts_count: int):
-            conn = sqlite3.connect(config.SQL_FILEPATH)
-            cur = conn.cursor()
-            query = f"SELECT passhash FROM users WHERE login = '{login}'"
-            cur.execute(query)
-            true_passhash = cur.fetchall()
+            '''Функция проверки введенного пользователем пароля при аутентификации'''
+            with Session() as sess:
+                # если пользователь существует вернется кортеж состоящий из хеш суммы пароля пользователя, иначе None
+                result = sess.query(tables.Users.passhash).filter(tables.Users.login == login).one() # кортеж из хэш суммы пароля
 
-            if find_hash(pass_msg.text, login) == true_passhash[0][0]:
+            if find_hash(pass_msg.text) == result[0]:
                 self.bot.send_message(pass_msg.chat.id, 'Вы успешно вошли в аккаунт! Теперь мы можем пообщаться', reply_markup=self.list_markup)
                 self.user.authorized = True
 
-            elif attempts_count < 2:
+            elif attempts_count < 2:    # количество попыток (максимум 3)
                 attempts_count += 1
                 self.bot.reply_to(pass_msg, f'Пароль неверный. Осталось попыток: {3 - attempts_count}', reply_markup=self.cancel_markup)
                 self.bot.register_next_step_handler(pass_msg, check_pass, login, attempts_count)
@@ -134,30 +110,23 @@ class BotClient:
             else:
                 self.bot.send_message(pass_msg.chat.id, 'Попытки закончились', reply_markup=self.kb_markup)
 
-            cur.close()
-            conn.close()
-
         @self.bot.message_handler(commands=['start'])
         def start_handler(message):
-            conn = sqlite3.connect(config.SQL_FILEPATH)  # подключение к создаваемой базе данных
-            cur = conn.cursor()                     # курсор для работы с таблицами
-            # команда для создания таблицы users, если такой не существует
-            # поле id будет автоматически инкрементироваться, являясь первичным ключом (primery key)
-            query = f'CREATE TABLE IF NOT EXISTS users (id int primery key, login varchar({config.LOGIN_LEN}), passhash varchar({config.PASS_LEN}))'
-            cur.execute(query)
-            conn.commit()
-            cur.close()
-            conn.close()
+            '''Функция обработки команды start'''
+            if not database_exists(engine.url):
+                Base.metadata.create_all(engine)
+
             self.bot.send_message(message.chat.id, 'Привет, я Райан Гослинг! Авторизируйтесь, чтобы пообщаться', reply_markup=self.kb_markup)
 
         @self.bot.message_handler(content_types=['text'])
         def text_handler(message):
-            if message.chat.type == 'private':
-                if message.text == 'Регистрация':
+            '''Функция обработки текстовых сообщений'''
+            if message.chat.type == 'private':  # проверка приватности чата
+                if message.text == self.reg_btn_txt:
                     self.bot.send_message(message.chat.id, 'Придумайте логин', reply_markup=self.cancel_markup)
                     self.bot.register_next_step_handler(message, create_account)
 
-                elif message.text == 'Аутентификация':
+                elif message.text == self.auth_bnt_txt:
                     self.bot.send_message(message.chat.id, 'Введите логин', reply_markup=self.cancel_markup)
                     self.bot.register_next_step_handler(message, check_login)
 
@@ -171,24 +140,16 @@ class BotClient:
 
         @self.bot.callback_query_handler(func=lambda call: True)
         def callback_message(call):
+            '''Функция обработки вызовов'''
             if call.message:
                 if call.data == 'cancel':
                     self.bot.edit_message_text('Лучше бы Вы прошли авторизацию', call.message.chat.id, call.message.message_id)
                     self.bot.clear_step_handler_by_chat_id(chat_id=call.message.chat.id)
                 elif call.data == 'list':
-                    conn = sqlite3.connect(config.SQL_FILEPATH)
-                    cur = conn.cursor()
-                    query = "SELECT * FROM users"
-                    cur.execute(query)
-                    users = cur.fetchall()
-                    query = "SELECT COUNT(*) FROM users"
-                    cur.execute(query)
-                    count = cur.fetchall()
-                    user_list = f'Список пользователей (всего: {count[0][0]}):\n'
-                    for item in users:
-                        user_list += f"Имя: '{item[1]}'\n"
-                    cur.close()
-                    conn.close()
+                    with Session() as sess:
+                        count = sess.query(func.count()).select_from(tables.Users).scalar()
+                        result = sess.query(tables.Users.login).all()
+                    user_list = f'Список пользователей (всего: {count}):\n'
+                    for login, in result:
+                        user_list += f'{login}\n'
                     self.bot.send_message(call.message.chat.id, user_list)
-
-        

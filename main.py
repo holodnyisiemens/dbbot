@@ -1,5 +1,6 @@
 import models
 import config
+import os
 
 if __name__ == '__main__':
     bot_client = models.BotClient(config.TELEGRAM_BOT_TOKEN)

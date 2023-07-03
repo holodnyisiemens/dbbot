@@ -1,16 +1,11 @@
-from sqlalchemy.orm import sessionmaker # для создания сессии
-from sqlalchemy import create_engine # для создания движка
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from config import DB_FILEPATH
+import config
+from sqlalchemy import MetaData, Table # для создания таблицы
 
-# экземпляр класса model позволяющий описывать таблицы
-Model = declarative_base(name='Model')
+engine = create_engine(config.DB_FILEPATH) # двигатель БД
 
-engine = create_engine(DB_FILEPATH) # создание двигателя базы данных (объекта engine)
-Session = sessionmaker( # позволит генерировать сколько нужно сессий
-    engine, 
-    autoflush=False,    # автообновление данных
-    autocommit=False
-)
+Session = sessionmaker(bind=engine, autoflush=False, autocommit=False)  # сессия
 
-session = Session() # получение новой сессии
+Base = declarative_base() # класс, от которого будут наследоваться таблицы
