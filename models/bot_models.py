@@ -60,7 +60,7 @@ class BotClient:
 
     def insert_in_table(self, user: User):  # добавление данных пользователя в таблицу
         with Session() as sess:
-            sess.add(Users_table(self.user.login, self.user.passhash)) # добавление данных пользователя в БД
+            sess.add(Users_table(login=self.user.login, passhash=self.user.passhash)) # добавление данных пользователя в БД
             sess.commit()
 
     def user_exists(self, login: str) -> bool:
@@ -77,10 +77,12 @@ class BotClient:
             self.bot.reply_to(
                 message=login_msg, 
                 text='Данный логин занят. Придумайте другой логин', 
-                reply_markup=self._cancel_markup)
+                reply_markup=self._cancel_markup,
+                )
             self.bot.register_next_step_handler(
                 message=login_msg, 
-                callback=self.create_account)
+                callback=self.create_account,
+                )
         else:       # базовый случай
             self.user.login = login_msg.text
             pass_msg = login_msg
@@ -89,7 +91,10 @@ class BotClient:
                 text='Придумайте пароль', 
                 reply_markup=self._cancel_markup,
                 )
-            self.bot.register_next_step_handler(message=pass_msg, callback=self.create_pass_and_insert)
+            self.bot.register_next_step_handler(
+                message=pass_msg, 
+                callback=self.create_pass_and_insert,
+                )
 
     
     def check_pass(self, pass_msg: Message, login: str, attempts_count: int):
@@ -102,7 +107,8 @@ class BotClient:
             self.bot.send_message(
                 chat_id=pass_msg.chat.id, 
                 text='Вы успешно вошли в аккаунт! Теперь мы можем пообщаться', 
-                reply_markup=self._list_markup)
+                reply_markup=self._list_markup,
+                )
             self.user.authorized = True
         elif attempts_count < 2:    # количество попыток (максимум 3)
             attempts_count += 1
@@ -118,10 +124,11 @@ class BotClient:
                 attempts_count=attempts_count,
                 )
         else:
-            self.bot.send_message(chat_id=pass_msg.chat.id,
-            text='Попытки закончились', 
-            reply_markup=self._kb_markup,
-            )
+            self.bot.send_message(
+                chat_id=pass_msg.chat.id,
+                text='Попытки закончились', 
+                reply_markup=self._kb_markup,
+                )
 
     def create_pass_and_insert(self, pass_msg: Message):
         '''Функция для создания пароля и добавления логина и пароля нового пользователя в базу данных'''
@@ -143,7 +150,12 @@ class BotClient:
                 text='Введите пароль', 
                 reply_markup=self._cancel_markup,
                 )
-            self.bot.register_next_step_handler(message=pass_msg, callback=self.check_pass, login=login, attempts_count=0)
+            self.bot.register_next_step_handler(
+                message=pass_msg, 
+                callback=self.check_pass, 
+                login=login, 
+                attempts_count=0,
+                )
         else:
             self.bot.send_message(
                 chat_id=login_msg.chat.id, 
@@ -151,7 +163,10 @@ class BotClient:
                 reply_markup=self._cancel_markup,
                 )
 
-            self.bot.register_next_step_handler(message=login_msg, callback=self.check_login)
+            self.bot.register_next_step_handler(
+                message=login_msg, 
+                callback=self.check_login,
+                )
 
     def register_handlers(self):
         '''Функция обработки всех сообщений пользователя'''
@@ -178,16 +193,25 @@ class BotClient:
                         text='Придумайте логин', 
                         reply_markup=self._cancel_markup,
                         )
-                    self.bot.register_next_step_handler(message=message, callback=self.create_account)
+                    self.bot.register_next_step_handler(
+                        message=message, 
+                        callback=self.create_account,
+                        )
                 elif message.text == self._BotClient__auth_bnt_txt:
                     self.bot.send_message(
                         message.chat.id, 
                         'Введите логин', 
                         reply_markup=self._cancel_markup,
                         )
-                    self.bot.register_next_step_handler(message=message, callback=self.check_login)
+                    self.bot.register_next_step_handler(
+                        message=message, 
+                        callback=self.check_login,
+                        )
                 elif self.user.authorized:
-                    self.bot.send_message(chat_id=message.chat.id, text=random.choice(config.ANSWER_LIST))
+                    self.bot.send_message(
+                        chat_id=message.chat.id, 
+                        text=random.choice(config.ANSWER_LIST),
+                        )
                 else:
                     self.bot.send_message(
                         message.chat.id, 
@@ -195,10 +219,11 @@ class BotClient:
                         reply_markup=self._kb_markup,
                         )
             else:
-                self.bot.send_message(chat_id=message.chat.id, 
-                text='Невозможно выполнить данную команду в неприватном чате', 
-                reply_markup=self._kb_markup,
-                )
+                self.bot.send_message(
+                    chat_id=message.chat.id, 
+                    text='Невозможно выполнить данную команду в неприватном чате', 
+                    reply_markup=self._kb_markup,
+                    )
 
         @self.bot.callback_query_handler(func=lambda call: True)
         def callback_message(call):
@@ -218,4 +243,7 @@ class BotClient:
                     user_list = f'Список пользователей (всего: {count}):\n'
                     for login, in result:
                         user_list += f'{login}\n'
-                    self.bot.send_message(chat_id=call.message.chat.id, text=user_list)
+                    self.bot.send_message(
+                        chat_id=call.message.chat.id, 
+                        text=user_list,
+                        )
