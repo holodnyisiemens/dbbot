@@ -12,8 +12,10 @@ Use:
 
 5) `pip install -r requirements.txt`
 
-7) Windows: `type .env.example > .env` | Linux: `cat .env.example >> .env`
+7) Windows: `Copy-Item .env.example .env` | Linux: `cp .env.example .env`
 
-8) define the environment variables in .env
+8) generate the token with Telegram bot *@BotFather*
 
-9) Windows: `python main.py` | Linux: `python3 main.py`
+9) in .env add environment variables to the quotes
+
+10) Windows: `python main.py` | Linux: `python3 main.py`
