@@ -51,7 +51,7 @@ class BotClient:
 
     def find_hash(self, password: str, local_salt: str = '') -> str:
         '''Функция, вычисляющая хэш-сумму пароля HASHES_NUMBER раз с применением солей'''
-        hash = password
+        hash: str = password
         hash += config.GLOBAL_SALT  # глобальная соль для хэширования (по умолчанию выключена)
         hash += local_salt          # локальная соль для хэширования (по умолчанию выключена)
         for _ in range(config.HASHES_NUMBER):
@@ -199,8 +199,8 @@ class BotClient:
                         )
                 elif message.text == self._BotClient__auth_bnt_txt:
                     self.bot.send_message(
-                        message.chat.id, 
-                        'Введите логин', 
+                        chat_id=message.chat.id, 
+                        text='Введите логин', 
                         reply_markup=self._cancel_markup,
                         )
                     self.bot.register_next_step_handler(
@@ -214,8 +214,8 @@ class BotClient:
                         )
                 else:
                     self.bot.send_message(
-                        message.chat.id, 
-                        'Авторизируйся, потом поговорим', 
+                        chat_id=message.chat.id, 
+                        text='Авторизируйся, потом поговорим', 
                         reply_markup=self._kb_markup,
                         )
             else:

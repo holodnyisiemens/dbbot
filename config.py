@@ -4,9 +4,6 @@ from dotenv import load_dotenv
 load_dotenv()   # добавление переменных окружения
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
-LOGIN_LEN = 50
-PASS_LEN = 50
-
 DATABASE_NAME="tg_bot_users.sql" # имя файла с расширением
 DB_FILEPATH = f'sqlite:///{DATABASE_NAME}' # драйвер и имя файла
 
