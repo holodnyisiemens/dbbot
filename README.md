@@ -12,8 +12,6 @@ Use:
 
 5) `pip install -r requirements.txt`
 
-6) Windows: `type nul > .env` | Linux: `touch .env`
-
-7) add the contents from the .env.example to the .env by defining the environment variables
+7) define the environment variables in .env
 
 8) Windows: `python main.py` | Linux: `python3 main.py`
