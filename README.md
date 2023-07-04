@@ -12,6 +12,8 @@ Use:
 
 5) `pip install -r requirements.txt`
 
-7) rename .env.example to .env and define the environment variables
+7) Windows: `type .env.example > .env` | Linux: `cat .env.example >> .env`
 
-8) Windows: `python main.py` | Linux: `python3 main.py`
+8) define the environment variables in .env
+
+9) Windows: `python main.py` | Linux: `python3 main.py`
