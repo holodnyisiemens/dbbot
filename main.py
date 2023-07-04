@@ -1,4 +1,4 @@
-from models import start_bot
+import models
 
 if __name__ == '__main__':
-    start_bot()
+    models.start_bot()

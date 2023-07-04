@@ -3,8 +3,9 @@ import config
 import sqlite3
 import hashlib
 import random
-from db import Session, engine, Base
-import tables
+from .db import Session, engine, Base
+from .tables import *
+
 from sqlalchemy import func, insert
 from sqlalchemy_utils import database_exists
 from telebot.types import Message, KeyboardButton, InlineKeyboardButton, ReplyKeyboardMarkup, InlineKeyboardMarkup
@@ -59,14 +60,14 @@ class BotClient:
 
     def insert_in_table(self, user: User):  # добавление данных пользователя в таблицу
         with Session() as sess:
-            sess.add(tables.Users(self.user.login, self.user.passhash)) # добавление данных пользователя в БД
+            sess.add(Users_table(self.user.login, self.user.passhash)) # добавление данных пользователя в БД
             sess.commit()
 
     def user_exists(self, login: str) -> bool:
         '''Функция для проверки существования пользователя в базе данных пользователей'''
         with Session() as sess:
             # если пользователь существует вернется кортеж состоящий из имени пользователя, иначе None
-            result = sess.query(tables.Users.login).filter(tables.Users.login == login).one_or_none()
+            result = sess.query(Users_table.login).filter(Users_table.login == login).one_or_none()
         return bool(result) # если в результат будет None, то вернется False, иначе True
 
     def create_account(self, login_msg: Message):
@@ -95,7 +96,7 @@ class BotClient:
         '''Функция проверки введенного пользователем пароля при аутентификации'''
         with Session() as sess:
             # если пользователь существует, вернется кортеж состоящий из хэш суммы пароля пользователя, иначе None
-            result = sess.query(tables.Users.passhash).filter(tables.Users.login == login).one()
+            result = sess.query(Users_table.passhash).filter(Users_table.login == login).one()
 
         if self.find_hash(password=pass_msg.text) == result[0]:  # result[0] - первый элемент кортежа - хэш сумма пароля
             self.bot.send_message(
@@ -212,8 +213,8 @@ class BotClient:
                     self.bot.clear_step_handler_by_chat_id(chat_id=call.message.chat.id)
                 elif call.data == 'list':
                     with Session() as sess:
-                        count = sess.query(func.count()).select_from(tables.Users).scalar()
-                        result = sess.query(tables.Users.login).all()
+                        count = sess.query(func.count()).select_from(Users_table).scalar()
+                        result = sess.query(Users_table.login).all()
                     user_list = f'Список пользователей (всего: {count}):\n'
                     for login, in result:
                         user_list += f'{login}\n'
