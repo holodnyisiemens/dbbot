@@ -14,8 +14,8 @@ Use:
 
 7) Windows: `Copy-Item .env.example .env` | Linux: `cp .env.example .env`
 
-8) generate the token with Telegram bot *@BotFather*
+8) Generate the token with Telegram bot *@BotFather*
 
-9) in .env add environment variables to the quotes
+9) In *.env* add the environment variables to the quotes. The token specifying is necessary
 
 10) Windows: `python main.py` | Linux: `python3 main.py`
