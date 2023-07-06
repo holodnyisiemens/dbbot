@@ -6,7 +6,7 @@ Use:
 
 2) `cd dbbot`
 
-3) `python -m venv env`
+3) Windows: `python -m venv env` | Linux: `python3 -m venv env`
 
 4) Windows: `env\Scripts\activate` | Linux: `source env/bin/activate`
 
