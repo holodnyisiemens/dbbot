@@ -8,7 +8,7 @@ Use:
 
 3) `python -m venv env`
 
-4) Windows: `env\Scripts\activate` | Linux: `source venv/bin/activate`
+4) Windows: `env\Scripts\activate` | Linux: `source env/bin/activate`
 
 5) `pip install -r requirements.txt`
 
