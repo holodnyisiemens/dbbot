@@ -7,3 +7,6 @@ __pycache__
 # Файлы виртуального окружения
 env/
 .env
+
+# Staff vs
+.vscode/
