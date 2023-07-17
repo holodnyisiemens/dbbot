@@ -1,7 +1,16 @@
+__doc__ = """
+this module defines
+"""
+
 from sqlalchemy import Column, Integer, String
+
 from .db import Base
 
-class Users_table(Base):
+class UsersTable(Base):
+    """
+    This is the class for work with database
+    """
+
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
@@ -11,6 +20,3 @@ class Users_table(Base):
     def __init__(self, login: str, passhash: str):
         self.login = login
         self.passhash = passhash
-
-    def __repr__(self):
-        return f"Логин: '{self.login}'. Хэш пароля: '{self.passhash}'"
